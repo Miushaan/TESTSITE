@@ -1,211 +1,282 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Product Catalog</title>
-<style>
-:root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--glass:rgba(255,255,255,0.08)}
-html,body{
-  height:100%;margin:0;
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial;
-  color:#e6eef6;font-size:13px;
-  background:linear-gradient(180deg,#021124 0%,#071326 100%);
-}
-.wrap{max-width:100%;margin:0 auto;padding:10px}
-h1{text-align:center;font-size:1rem;margin:0 0 8px}
-.card{background:var(--card);border-radius:10px;padding:10px;box-shadow:0 3px 12px rgba(0,0,0,0.5);}
-.controls{display:flex;flex-direction:column;gap:8px}
-.btn{
-  background:linear-gradient(90deg,var(--accent),#7dd3fc);
-  border:none;padding:8px;border-radius:8px;
-  color:#021124;font-weight:600;cursor:pointer;font-size:0.9rem;text-align:center
-}
-input[type="file"]{display:none}
-.search{position:relative}
-.search input{
-  width:100%;padding:12px 10px;border-radius:10px;
-  border:1px solid rgba(255,255,255,0.1);
-  background:var(--glass);color:inherit;font-size:1rem;
-}
-.meta{margin-top:8px;color:var(--muted);font-size:0.8rem;text-align:center}
-.table-wrap{margin-top:10px}
-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:0.8rem}
-th,td{
-  padding:6px 5px;text-align:left;
-  border-bottom:1px solid rgba(255,255,255,0.05);
-  word-wrap:break-word;white-space:normal;
-}
-th{
-  color:var(--muted);font-weight:600;
-  position:sticky;top:0;background:var(--card);z-index:1
-}
-.tag{display:inline-block;padding:3px 6px;border-radius:999px;background:rgba(255,255,255,0.1);font-size:0.7rem;color:var(--muted)}
-.footer{margin:10px 0 0;text-align:center;font-size:0.7rem;color:var(--muted)}
-.zero-qty{color:red;font-weight:600;}
-mark{background:rgba(6,182,212,0.3);color:#fff;border-radius:2px;padding:0 1px}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleet Maintenance</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body>
-<div class="wrap">
-  <h1>Product Catalog</h1>
-  <div class="card">
-    <div class="controls">
-      <label id="upload-label" class="btn">Upload File
-        <input id="file-input" type="file" accept=".xlsx,.xls,.csv"/>
-      </label>
-      <button id="upload-again" class="btn" style="display:none">Upload Again</button>
-      <button id="clear-cache" class="btn" style="display:none;background:linear-gradient(90deg,#f87171,#ef4444)">Clear Cache</button>
-      <div class="search">
-        <input id="search-box" placeholder="🔍 Search products..." />
-      </div>
-    </div>
-    <div class="meta" id="file-meta">No file loaded.</div>
-    <div class="table-wrap card" style="margin-top:10px;">
-      <span class="tag" id="rows-count">0 rows</span>
-      <div style="max-height:360px;margin-top:6px;">
-        <table id="data-table"><thead></thead><tbody></tbody></table>
-      </div>
+
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-30 bg-white border-b p-4 space-y-3">
+  <div class="flex justify-between items-center">
+    <h1 class="font-black tracking-tight">Fleet Maintenance</h1>
+    <div class="flex gap-2">
+      <input id="fileInput" type="file" accept=".xlsx,.xls" hidden>
+      <button id="importBtn" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold">Import</button>
+      <button id="exportBtn" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Export</button>
     </div>
   </div>
-  <div class="footer">Mobile Catalog App</div>
+
+  <!-- DASHBOARD -->
+  <div class="flex gap-2 overflow-x-auto">
+    <div class="flex-1 bg-white p-3 rounded-2xl shadow text-center">
+      <p class="text-xs font-bold text-slate-400">Fleet Progress</p>
+      <p id="dashProgress" class="text-xl font-black text-blue-600">0%</p>
+    </div>
+    <div class="flex-1 bg-white p-3 rounded-2xl shadow text-center">
+      <p class="text-xs font-bold text-slate-400">Completed</p>
+      <p id="dashCompleted" class="text-xl font-black text-green-600">0</p>
+    </div>
+    <div class="flex-1 bg-white p-3 rounded-2xl shadow text-center">
+      <p class="text-xs font-bold text-slate-400">Pending</p>
+      <p id="dashPending" class="text-xl font-black text-orange-600">0</p>
+    </div>
+    <div class="flex-1 bg-white p-3 rounded-2xl shadow text-center">
+      <p class="text-xs font-bold text-slate-400">On Hold</p>
+      <p id="dashHold" class="text-xl font-black text-red-600">0</p>
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="flex gap-2 flex-wrap">
+    <input id="searchInput" placeholder="Search…" class="flex-1 px-3 py-2 rounded-lg border text-sm">
+    <select id="statusFilter" class="px-3 py-2 rounded-lg border text-sm">
+      <option value="">All Status</option>
+      <option>Pending</option>
+      <option>On-Going</option>
+      <option>Completed</option>
+      <option>On Hold</option>
+    </select>
+    <select id="wsFilter" class="px-3 py-2 rounded-lg border text-sm">
+      <option value="">All Workshops</option>
+    </select>
+    <select id="monthSelect" class="px-3 py-2 rounded-lg border text-sm"></select>
+    <select id="yearSelect" class="px-3 py-2 rounded-lg border text-sm"></select>
+    <button id="monthlyPdfBtn" class="px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-bold">
+      Monthly PDF
+    </button>
+  </div>
+</header>
+
+<!-- VESSEL TABS -->
+<div id="vesselTabs" class="sticky top-[260px] z-20 bg-slate-100 border-b px-4 py-2 flex gap-2 overflow-x-auto"></div>
+
+<!-- TASK LIST -->
+<main id="taskList" class="p-4 space-y-3"></main>
+
+<!-- EDIT MODAL -->
+<div id="modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-end sm:items-center justify-center">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4">
+    <div class="flex justify-between items-center">
+      <h2 id="modalTitle" class="font-bold text-lg"></h2>
+      <button onclick="closeModal()" class="text-slate-400 text-xl">✕</button>
+    </div>
+
+    <div id="modalDetails" class="text-sm text-slate-600"></div>
+
+    <label class="text-xs font-bold">Status</label>
+    <select id="statusSelect" class="w-full border rounded-lg px-3 py-2 text-sm">
+      <option>Pending</option>
+      <option>On-Going</option>
+      <option>Completed</option>
+      <option>On Hold</option>
+    </select>
+
+    <label class="text-xs font-bold">Progress</label>
+    <input id="progressRange" type="range" min="0" max="100" class="w-full">
+    <div id="progressLabel" class="text-xs text-slate-500"></div>
+  </div>
 </div>
 
 <script>
-let rawData=[], headers=[], qtyColumn='Available physical';
-const fileInput=document.getElementById('file-input');
-const uploadLabel=document.getElementById('upload-label');
-const uploadAgain=document.getElementById('upload-again');
-const clearCache=document.getElementById('clear-cache');
-const searchBox=document.getElementById('search-box');
-const fileMeta=document.getElementById('file-meta');
-const rowsCount=document.getElementById('rows-count');
-const dataTable=document.getElementById('data-table');
+document.addEventListener('DOMContentLoaded',()=>{
 
-// Restore saved data on page load
-window.addEventListener("load", ()=>{
-  const saved = localStorage.getItem("catalogData");
-  const savedHeaders = localStorage.getItem("catalogHeaders");
-  const savedName = localStorage.getItem("catalogFileName");
-  if(saved && savedHeaders){
-    rawData = JSON.parse(saved);
-    headers = JSON.parse(savedHeaders);
-    fileMeta.textContent = `Restored: ${savedName||'saved file'} — ${rawData.length} rows`;
-    rowsCount.textContent = `${rawData.length} rows`;
-    uploadLabel.style.display='none';
-    uploadAgain.style.display='block';
-    clearCache.style.display='block';
-  }
-});
+let tasks = JSON.parse(localStorage.getItem('fleetTasks')||'[]');
+let currentVessel='ALL';
+let activeTask=null;
 
-fileInput.addEventListener('change', async ev=>{
-  const f=ev.target.files[0]; if(!f) return;
-  const buffer=await f.arrayBuffer();
-  const workbook=XLSX.read(buffer,{type:'array'});
-  const sheetName=workbook.SheetNames[0];
-  const worksheet=workbook.Sheets[sheetName];
-  const json=XLSX.utils.sheet_to_json(worksheet,{defval:'',header:1});
-  if(json.length<=1){ fileMeta.textContent='No rows found'; return; }
+const el=id=>document.getElementById(id);
 
-  headers=json[0];
-  rawData=json.slice(1).map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]])));
-  fileMeta.textContent=`${f.name} — ${rawData.length} rows`;
-  rowsCount.textContent=`${rawData.length} rows`;
+/* DASHBOARD */
+const dashProgress=el('dashProgress'),
+dashCompleted=el('dashCompleted'),
+dashPending=el('dashPending'),
+dashHold=el('dashHold');
 
-  // Save to localStorage
-  localStorage.setItem("catalogData", JSON.stringify(rawData));
-  localStorage.setItem("catalogHeaders", JSON.stringify(headers));
-  localStorage.setItem("catalogFileName", f.name);
-
-  renderTable([]); // start empty
-  uploadLabel.style.display='none'; 
-  uploadAgain.style.display='block'; 
-  clearCache.style.display='block';
-});
-
-uploadAgain.addEventListener('click',()=>{
-  fileInput.value='';
-  uploadLabel.style.display='block';
-  uploadAgain.style.display='none';
-  clearCache.style.display='none';
-  fileMeta.textContent='No file loaded.'; rowsCount.textContent='0 rows';
-  dataTable.querySelector('thead').innerHTML='';
-  dataTable.querySelector('tbody').innerHTML='';
-  rawData=[]; headers=[];
-  // Clear saved
-  localStorage.removeItem("catalogData");
-  localStorage.removeItem("catalogHeaders");
-  localStorage.removeItem("catalogFileName");
-});
-
-clearCache.addEventListener('click',()=>{
-  if(confirm("Are you sure you want to clear saved file data?")){
-    localStorage.removeItem("catalogData");
-    localStorage.removeItem("catalogHeaders");
-    localStorage.removeItem("catalogFileName");
-    uploadLabel.style.display='block';
-    uploadAgain.style.display='none';
-    clearCache.style.display='none';
-    fileMeta.textContent='Cache cleared. No file loaded.'; 
-    rowsCount.textContent='0 rows';
-    dataTable.querySelector('thead').innerHTML='';
-    dataTable.querySelector('tbody').innerHTML='';
-    rawData=[]; headers=[];
-  }
-});
-
-searchBox.addEventListener('input',debounce(()=>{
-  const q=searchBox.value.trim().toLowerCase();
-  if(!q){ renderTable([]); return; }
-
-  // Filter: only rows where column B contains typed letters in order
-  let results=rawData.filter(r=>{
-    const val=String(r[headers[1]]||'').toLowerCase();
-    return val.includes(q);
-  });
-
-  // Sort: first by match position, then by quantity (desc)
-  results.sort((a,b)=>{
-    const aVal=String(a[headers[1]]||'').toLowerCase();
-    const bVal=String(b[headers[1]]||'').toLowerCase();
-    const aIndex=aVal.indexOf(q);
-    const bIndex=bVal.indexOf(q);
-    if(aIndex!==bIndex) return aIndex-bIndex; // closer to start = higher
-    return parseFloat(b[qtyColumn]||0)-parseFloat(a[qtyColumn]||0);
-  });
-
-  renderTable(results.slice(0,50),q); // limit to 50
-}));
-
-function renderTable(rows,q=''){
-  const thead=dataTable.querySelector('thead'), tbody=dataTable.querySelector('tbody');
-  thead.innerHTML=''; tbody.innerHTML='';
-  if(!rows||rows.length===0){ thead.innerHTML='<tr><th>No results</th></tr>'; rowsCount.textContent='0 rows'; return; }
-
-  // Only A,B,C,D
-  const cols=headers.slice(0,4);
-  thead.innerHTML='<tr>'+cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')+'</tr>';
-  rows.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=cols.map(c=>{
-      let val=String(r[c]||'');
-      if(c===qtyColumn && (val===''||parseFloat(val)===0)) return `<td class="zero-qty">0</td>`;
-      if(q && c===headers[1]) val=highlightMatch(val,q);
-      return `<td>${val}</td>`;
-    }).join('');
-    tbody.appendChild(tr);
-  });
-  rowsCount.textContent=`${rows.length} rows`;
+/* FIX PROGRESS % */
+function parseProgress(val){
+  if(val==null) return 0;
+  return Number(String(val).replace('%','').trim())||0;
 }
 
-function highlightMatch(text,query){
-  if(!query) return escapeHtml(text);
-  const re=new RegExp(`(${query})`,'gi');
-  return escapeHtml(text).replace(re,'<mark>$1</mark>');
+/* IMPORT */
+el('importBtn').onclick=()=>el('fileInput').click();
+el('exportBtn').onclick=exportExcel;
+
+el('fileInput').onchange=e=>{
+  const r=new FileReader();
+  r.onload=ev=>{
+    const wb=XLSX.read(ev.target.result,{type:'binary'});
+    const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    tasks=data.map((x,i)=>({
+      id:Date.now()+i,
+      vessel:x['ASSET/SERVICE NAME']||'Unknown',
+      wo:x['WO NUMBER']||'',
+      task:x['TASK DETAILS']||'',
+      date:x['TASK DATE'],
+      workshop:x['Workshop']||'N/A',
+      status:x['STATUS']||'Pending',
+      progress:parseProgress(x['PROGRESS %']),
+      notes:[]
+    }));
+    save(); buildAll(); render();
+  };
+  r.readAsBinaryString(e.target.files[0]);
+};
+
+/* BUILDERS */
+function buildAll(){buildTabs();buildWS();buildMonthYear();}
+
+function buildTabs(){
+  const v=[...new Set(tasks.map(t=>t.vessel))];
+  vesselTabs.innerHTML='';
+  ['ALL',...v].forEach(x=>{
+    const b=document.createElement('button');
+    b.textContent=x==='ALL'?'All Fleet':x;
+    b.className=`px-4 py-2 rounded-full text-xs font-bold ${currentVessel===x?'bg-blue-600 text-white':'bg-white border'}`;
+    b.onclick=()=>{currentVessel=x;buildTabs();render();}
+    vesselTabs.appendChild(b);
+  });
 }
-function escapeHtml(s){ return s.replace(/[&<>"]|'/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])) }
-function debounce(fn,delay=200){let t; return(...args)=>{clearTimeout(t); t=setTimeout(()=>fn(...args),delay);};}
+
+function buildWS(){
+  wsFilter.innerHTML='<option value="">All Workshops</option>';
+  [...new Set(tasks.map(t=>t.workshop))].forEach(w=>{
+    wsFilter.innerHTML+=`<option>${w}</option>`;
+  });
+}
+
+function buildMonthYear(){
+  monthSelect.innerHTML='<option value="">All Months</option>';
+  yearSelect.innerHTML='<option value="">All Years</option>';
+  const m=new Set(),y=new Set();
+  tasks.forEach(t=>{
+    const d=new Date(t.date);
+    if(!isNaN(d)){m.add(d.getMonth());y.add(d.getFullYear());}
+  });
+  [...m].sort().forEach(x=>monthSelect.innerHTML+=`<option value="${x}">${new Date(0,x).toLocaleString('en',{month:'long'})}</option>`);
+  [...y].sort().forEach(x=>yearSelect.innerHTML+=`<option>${x}</option>`);
+}
+
+/* RENDER */
+function render(){
+  taskList.innerHTML='';
+  const f=tasks.filter(t=>
+    (currentVessel==='ALL'||t.vessel===currentVessel)&&
+    (!statusFilter.value||t.status===statusFilter.value)&&
+    (!wsFilter.value||t.workshop===wsFilter.value)&&
+    (t.task.toLowerCase().includes(searchInput.value.toLowerCase())||
+     t.wo.toLowerCase().includes(searchInput.value.toLowerCase()))
+  );
+
+  dashCompleted.textContent=f.filter(t=>t.status==='Completed').length;
+  dashPending.textContent=f.filter(t=>t.status==='Pending').length;
+  dashHold.textContent=f.filter(t=>t.status==='On Hold').length;
+  dashProgress.textContent=Math.round(f.reduce((a,c)=>a+c.progress,0)/(f.length||1))+'%';
+
+  f.forEach(t=>{
+    taskList.innerHTML+=`
+    <div onclick="openTask(${t.id})"
+      class="bg-white p-4 rounded-2xl shadow cursor-pointer hover:ring-2 ring-blue-200">
+      <p class="text-xs font-bold text-blue-600">${t.vessel}</p>
+      <p class="font-semibold">${t.task}</p>
+      <p class="text-xs">WO: ${t.wo} | ${t.workshop}</p>
+      <p class="text-xs">${t.status} – ${t.progress}%</p>
+    </div>`;
+  });
+}
+
+/* EDIT MODAL */
+window.openTask=id=>{
+  activeTask=tasks.find(t=>t.id===id);
+  if(!activeTask) return;
+  modal.classList.remove('hidden');
+  modalTitle.textContent=activeTask.task;
+  modalDetails.innerHTML=`
+    <div>Vessel: <b>${activeTask.vessel}</b></div>
+    <div>WO: <b>${activeTask.wo}</b></div>
+    <div>Workshop: <b>${activeTask.workshop}</b></div>`;
+  statusSelect.value=activeTask.status;
+  progressRange.value=activeTask.progress;
+  progressLabel.textContent=activeTask.progress+'%';
+};
+
+statusSelect.onchange=()=>{
+  if(!activeTask) return;
+  activeTask.status=statusSelect.value;
+  save(); render();
+};
+progressRange.oninput=()=>{
+  if(!activeTask) return;
+  activeTask.progress=Number(progressRange.value);
+  progressLabel.textContent=activeTask.progress+'%';
+  save(); render();
+};
+window.closeModal=()=>modal.classList.add('hidden');
+
+/* MONTHLY PDF (MANAGEMENT COVER) */
+monthlyPdfBtn.onclick=()=>{
+  const win=window.open('');
+  const total=tasks.length;
+  const comp=tasks.filter(t=>t.status==='Completed').length;
+  const hold=tasks.filter(t=>t.status==='On Hold').length;
+  const avg=Math.round(tasks.reduce((a,c)=>a+c.progress,0)/(total||1));
+
+  win.document.write(`
+  <h1>Fleet Maintenance Monthly Report</h1>
+  <p><b>Total Tasks:</b> ${total}</p>
+  <p><b>Completed:</b> ${comp}</p>
+  <p><b>On Hold:</b> ${hold}</p>
+  <p><b>Average Progress:</b> ${avg}%</p>
+  <hr>`);
+
+  [...new Set(tasks.map(t=>t.vessel))].forEach(v=>{
+    win.document.write(`<h2>${v}</h2>`);
+    const byWS={};
+    tasks.filter(t=>t.vessel===v).forEach(t=>{
+      (byWS[t.workshop]=byWS[t.workshop]||[]).push(t);
+    });
+    Object.keys(byWS).forEach(w=>{
+      win.document.write(`<h3>Workshop: ${w}</h3><ul>`);
+      byWS[w].forEach(t=>{
+        win.document.write(`<li>${t.wo} – ${t.task} (${t.status}, ${t.progress}%)</li>`);
+      });
+      win.document.write('</ul>');
+    });
+  });
+
+  win.print();
+};
+
+/* EXPORT */
+function exportExcel(){
+  const ws=XLSX.utils.json_to_sheet(tasks);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Tasks');
+  XLSX.writeFile(wb,'Fleet_Tasks.xlsx');
+}
+
+function save(){localStorage.setItem('fleetTasks',JSON.stringify(tasks));}
+
+buildAll(); render();
+
+});
 </script>
+
 </body>
 </html>
